@@ -8,6 +8,26 @@ dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
 const UserModel = require("../Components/Mongodb");
 const app = express();
+const corsOptions = {
+	origin: allowedOrigin,
+	methods: ["GET", "POST", "PUT", "DELETE"],
+	credentials: true,
+};
+app.use(cors(corsOptions));
+const allowedOrigins = [
+	"https://my-frontend.onrender.com",
+	"http://localhost:5173",
+];
+
+const corsOptions = {
+	origin: (origin, callback) => {
+		if (!origin || allowedOrigins.includes(origin)) {
+			callback(null, true);
+		} else {
+			callback(new Error("CORS Error: Access Denied"));
+		}
+	},
+};
 
 const JWT_SECRET = "wisperRooms";
 
