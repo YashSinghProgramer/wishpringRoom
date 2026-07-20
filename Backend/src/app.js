@@ -81,7 +81,6 @@ app.post("/login", async (req, res) => {
 			return res.status(400).json({ message: "All fields are required!" });
 		}
 
-		// Case-insensitive search agar username capitalization issue ho
 		const user = await UserModel.findOne({ username });
 		if (!user) {
 			return res.status(401).json({ message: "Invalid username or password!" });
