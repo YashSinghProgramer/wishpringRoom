@@ -10,7 +10,7 @@ const UserModel = require("../Components/Mongodb");
 const app = express();
 const allowedOrigins = [
 	"https://whisper-six-pi.vercel.app",
-	"http://localhost:5173",
+	"http://localhost:3000",
 ];
 const corsOptions = {
 	origin: (origin, callback) => {
