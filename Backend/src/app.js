@@ -1,5 +1,5 @@
-const cors = require("cors");
 const express = require("express");
+const cors = require("cors");
 const dns = require("dns");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -8,31 +8,32 @@ dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
 const UserModel = require("../Components/Mongodb");
 const app = express();
-const corsOptions = {
-	origin: allowedOrigin,
-	methods: ["GET", "POST", "PUT", "DELETE"],
-	credentials: true,
-};
-app.use(cors(corsOptions));
+
+// 1. Whitelisted Origins array define karein
 const allowedOrigins = [
 	"https://whisper-six-pi.vercel.app",
 	"http://localhost:5173",
 ];
 
+// 2. Single CORS configuration function
 const corsOptions = {
 	origin: (origin, callback) => {
+		// !origin postman / server-to-server requests allow karne ke liye hota hai
 		if (!origin || allowedOrigins.includes(origin)) {
 			callback(null, true);
 		} else {
 			callback(new Error("CORS Error: Access Denied"));
 		}
 	},
+	methods: ["GET", "POST", "PUT", "DELETE"],
+	credentials: true,
 };
 
-const JWT_SECRET = "wisperRooms";
-
-app.use(cors());
+// 3. Middleware apply karein (sirf EK baar)
+app.use(cors(corsOptions));
 app.use(express.json());
+
+const JWT_SECRET = process.env.JWT_SECRET || "wisperRooms";
 
 app.get("/", (req, res) => {
 	res.send("Hello, world");
@@ -67,7 +68,7 @@ app.post("/createuser", async (req, res) => {
 			.status(201)
 			.json({ message: "User created successfully!", user: { username } });
 	} catch (error) {
-		console.error(error);
+		console.error("Create User Error:", error);
 		res.status(500).json({ message: "Internal Server Error" });
 	}
 });
@@ -80,6 +81,7 @@ app.post("/login", async (req, res) => {
 			return res.status(400).json({ message: "All fields are required!" });
 		}
 
+		// Case-insensitive search agar username capitalization issue ho
 		const user = await UserModel.findOne({ username });
 		if (!user) {
 			return res.status(401).json({ message: "Invalid username or password!" });
@@ -102,7 +104,7 @@ app.post("/login", async (req, res) => {
 			user: { username: user.username },
 		});
 	} catch (error) {
-		console.error(error);
+		console.error("Login Error:", error);
 		res.status(500).json({ message: "Internal Server Error" });
 	}
 });
