@@ -15,7 +15,7 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 const allowedOrigins = [
-	"https://my-frontend.onrender.com",
+	"https://whisper-six-pi.vercel.app",
 	"http://localhost:5173",
 ];
 
