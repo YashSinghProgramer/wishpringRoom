@@ -8,17 +8,12 @@ dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
 const UserModel = require("../Components/Mongodb");
 const app = express();
-
-// 1. Whitelisted Origins array define karein
 const allowedOrigins = [
 	"https://whisper-six-pi.vercel.app",
 	"http://localhost:5173",
 ];
-
-// 2. Single CORS configuration function
 const corsOptions = {
 	origin: (origin, callback) => {
-		// !origin postman / server-to-server requests allow karne ke liye hota hai
 		if (!origin || allowedOrigins.includes(origin)) {
 			callback(null, true);
 		} else {
@@ -28,11 +23,24 @@ const corsOptions = {
 	methods: ["GET", "POST", "PUT", "DELETE"],
 	credentials: true,
 };
-
-// 3. Middleware apply karein (sirf EK baar)
 app.use(cors(corsOptions));
 app.use(express.json());
+const authenticateToken = (req, res, next) => {
+	const authHeader = req.headers["authorization"];
+	const token = authHeader && authHeader.split(" ")[1];
 
+	if (!token) {
+		return res.status(401).json({ message: "Access Token missing!" });
+	}
+
+	jwt.verify(token, JWT_SECRET, (err, decodedUser) => {
+		if (err) {
+			return res.status(403).json({ message: "Invalid or expired token!" });
+		}
+		req.user = decodedUser;
+		next();
+	});
+};
 const JWT_SECRET = process.env.JWT_SECRET || "wisperRooms";
 
 app.get("/", (req, res) => {
@@ -107,5 +115,26 @@ app.post("/login", async (req, res) => {
 		res.status(500).json({ message: "Internal Server Error" });
 	}
 });
+app.get("/profile", authenticateToken, async (req, res) => {
+	try {
+		const user = await UserModel.findById(req.user.userId).select(
+			"username profile",
+		);
 
+		if (!user) {
+			return res.status(404).json({ message: "User not found!" });
+		}
+
+		res.status(200).json({
+			message: "Profile fetched successfully!",
+			user: {
+				username: user.username,
+				profile: user.profile,
+			},
+		});
+	} catch (error) {
+		console.error("Fetch Profile Error:", error);
+		res.status(500).json({ message: "Internal Server Error" });
+	}
+});
 module.exports = app;
