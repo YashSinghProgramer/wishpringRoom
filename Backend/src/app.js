@@ -3,7 +3,10 @@ const cors = require("cors");
 const dns = require("dns");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-
+const dotenv = require("dotenv");
+const Groq = require("groq-sdk");
+const OpenAI = require("openai");
+dotenv.config();
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
 const UserModel = require("../Components/Mongodb");
@@ -135,6 +138,52 @@ app.get("/profile", authenticateToken, async (req, res) => {
 	} catch (error) {
 		console.error("Fetch Profile Error:", error);
 		res.status(500).json({ message: "Internal Server Error" });
+	}
+});
+
+const groq = new Groq({
+	apiKey: process.env.GROQ_API_KEY,
+});
+
+app.post("/api/chat", async (req, res) => {
+	try {
+		const { message, history } = req.body;
+
+		if (!message) {
+			return res.status(400).json({ error: "Message is required" });
+		}
+
+		const formattedMessages = [
+			{
+				role: "system",
+				content:
+					"You are Wisper AI, the intelligent assistant inside the Wisper platform.Your role is to help users with coding, learning, writing, brainstorming, productivity, and general questions. Be friendly, concise, and helpful.Rules:- Never claim to know a user's real identity. - Respect the anonymous nature of Wisper. - Protect user privacy and never ask for unnecessary personal information. - Give accurate, step-by-step answers when needed.- For coding questions, provide clean, well-explained code. - For writing tasks, create clear and natural content. - If you are unsure, say so instead of making up facts. - Refuse requests that could harm people or facilitate illegal activities. - Keep responses positive, respectful, and easy to understand. Your personality: - Calm - Professional - Supportive - Intelligent - Privacy-first , Always introduce yourself as `Wisper AI` when appropriate and focus on helping users effectively while maintaining a safe and private experience. you can use english and hinglish accoring to user  and if user talk to you that means user friends where not online. and not write paras talk in shot and you talk like a friend like an real human being and talk to him about there day to day life.",
+			},
+			...(history || []),
+			{ role: "user", content: message },
+		];
+
+		// Llama 3.1 8B Model (Free)
+		const completion = await groq.chat.completions.create({
+			messages: formattedMessages,
+			model: "llama-3.1-8b-instant",
+			temperature: 0.7,
+			max_tokens: 1024,
+		});
+
+		const aiResponse =
+			completion.choices[0]?.message?.content || "No response generated.";
+
+		return res.json({
+			success: true,
+			reply: aiResponse,
+		});
+	} catch (error) {
+		console.error("Groq Error:", error);
+		return res.status(500).json({
+			success: false,
+			error: "AI response generate karne me error aaya.",
+		});
 	}
 });
 module.exports = app;
