@@ -1,3 +1,4 @@
+const { createServer } = require("node:http");
 const express = require("express");
 const cors = require("cors");
 const dns = require("dns");
@@ -6,11 +7,19 @@ const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
 const Groq = require("groq-sdk");
 const OpenAI = require("openai");
+const { Server } = require("socket.io");
 dotenv.config();
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
 const UserModel = require("../Components/Mongodb");
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+	cors: {
+		origin: "http://localhost:3000",
+		methods: ["GET", "POST"],
+	},
+});
 const allowedOrigins = [
 	"https://whisper-six-pi.vercel.app",
 	"http://localhost:3000",
@@ -186,4 +195,31 @@ app.post("/api/chat", async (req, res) => {
 		});
 	}
 });
-module.exports = app;
+const room = "red_room";
+
+io.on("connection", (socket) => {
+	console.log("a user connected", socket.id);
+
+	// 1. Join Room Event
+	socket.on("joinRoom", (username) => {
+		console.log(`${username} joined the group.`);
+		socket.join(room);
+
+		// Baaki sabhi users ko notify karo (except sender)
+		socket.to(room).emit("notice", username);
+	});
+
+	// 2. Chat Message Event (Separated from joinRoom)
+	socket.on("chatmessage", (msg) => {
+		console.log("Received message:", msg);
+
+		// Room me sabhi log (sender including) ko message bhejo:
+		io.to(room).emit("chatmessage", msg);
+	});
+
+	socket.on("disconnect", () => {
+		console.log("user disconnected", socket.id);
+	});
+});
+
+module.exports = { app, httpServer };
